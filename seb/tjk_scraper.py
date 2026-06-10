@@ -165,17 +165,23 @@ def _parse_race_breed(detail_div: Tag) -> str:
     return "Bilinmiyor"
 
 
+def _extract_era(href: str) -> str:
+    """TJK link'inden Era parametresini çıkar."""
+    match = re.search(r"Era=([^&]+)", href)
+    return match.group(1) if match else "lastMonth"
+
+
 def fetch_race_dates(
     session: requests.Session,
     start_date: date,
     end_date: date,
-) -> list[tuple[date, list[tuple[int, str]]]]:
+) -> list[tuple[date, list[tuple[int, str, str]]]]:
     """Tarih aralığındaki yarış günlerini ve hipodromları bul.
 
     Returns:
-        [(tarih, [(sehir_id, sehir_adi), ...]), ...]
+        [(tarih, [(sehir_id, sehir_adi, era), ...]), ...]
     """
-    results: list[tuple[date, list[tuple[int, str]]]] = []
+    results: list[tuple[date, list[tuple[int, str, str]]]] = []
     current = start_date
 
     while current <= end_date:
@@ -196,7 +202,7 @@ def fetch_race_dates(
             continue
 
         soup = BeautifulSoup(resp.text, "lxml")
-        cities: list[tuple[int, str]] = []
+        cities: list[tuple[int, str, str]] = []
 
         for a_tag in soup.find_all("a"):
             href = a_tag.get("href", "")
@@ -208,7 +214,8 @@ def fetch_race_dates(
             sehir_id = int(match.group(1))
             if sehir_id in TURKISH_CITIES:
                 city_name = TURKISH_CITIES[sehir_id]
-                cities.append((sehir_id, city_name))
+                era = _extract_era(href)
+                cities.append((sehir_id, city_name, era))
 
         if cities:
             results.append((current, cities))
@@ -226,8 +233,16 @@ def fetch_city_races(
     race_date: date,
     sehir_id: int,
     sehir_adi: str,
+    era: str = "lastMonth",
 ) -> list[dict]:
     """Belirli bir tarih ve hipodrom için yarış sonuçlarını çek.
+
+    Args:
+        session: HTTP session.
+        race_date: Yarış tarihi.
+        sehir_id: TJK şehir ID'si.
+        sehir_adi: Şehir adı.
+        era: TJK'nın kullandığı dönem parametresi (ör: lastMonth, lastWeek).
 
     Returns:
         Yarış kayıtları listesi (her satır bir at girişi).
@@ -240,9 +255,9 @@ def fetch_city_races(
             params={
                 "SehirId": sehir_id,
                 "QueryParameter_Tarih": date_str,
-                "Era": "past",
+                "SehirAdi": sehir_adi,
+                "Era": era,
             },
-            headers={"X-Requested-With": "XMLHttpRequest"},
             timeout=30,
         )
         resp.raise_for_status()
@@ -374,8 +389,10 @@ def scrape_tjk(
 
     # Her yarış günü ve hipodrom için sonuçları çek
     for race_date, cities in race_days:
-        for sehir_id, sehir_adi in cities:
-            records = fetch_city_races(session, race_date, sehir_id, sehir_adi)
+        for sehir_id, sehir_adi, era in cities:
+            records = fetch_city_races(
+                session, race_date, sehir_id, sehir_adi, era,
+            )
             all_records.extend(records)
             time.sleep(REQUEST_DELAY_SECONDS)
 
@@ -430,7 +447,10 @@ def scrape_tjk_single_date(
             continue
 
         sehir_adi = TURKISH_CITIES[sehir_id]
-        records = fetch_city_races(session, race_date, sehir_id, sehir_adi)
+        era = _extract_era(href)
+        records = fetch_city_races(
+            session, race_date, sehir_id, sehir_adi, era,
+        )
         all_records.extend(records)
         time.sleep(REQUEST_DELAY_SECONDS)
 
