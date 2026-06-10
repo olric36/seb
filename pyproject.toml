@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seb"
+version = "0.1.0"
+description = "At yarışı tahmini yapan veri işleme aracı (Horse Racing Predictor)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "olric36"}]
+dependencies = [
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "click>=8.0",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "joblib>=1.3",
+    "sqlalchemy>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+seb = "seb.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=seb --cov-report=term-missing"
+
+[tool.setuptools.packages.find]
+include = ["seb*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
