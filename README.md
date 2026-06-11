@@ -1,13 +1,12 @@
-# SEB — At Yarışı Tahmin Aracı
+# SEB — TJK Yarış Verisi Çekme ve Analiz Aracı
 
-Python ile geliştirilmiş, TJK (Türkiye Jokey Kulübü) verilerini kullanan at yarışı tahmin ve analiz aracı.
+Python ile geliştirilmiş, TJK (Türkiye Jokey Kulübü) verilerini çeken ve SQLite veritabanında saklayan veri işleme aracı.
 
 ## Özellikler
 
 - **TJK Veri Çekme**: tjk.org'dan son 6 aylık Türkiye yarış sonuçlarını otomatik çekme
 - **Veritabanı**: SQLite ile yapılandırılmış veri saklama (hipodromlar, atlar, jokeyler, mesafeler, yarışlar, sonuçlar)
 - **İstatistik Analizi**: At, jokey ve mesafe bazlı detaylı istatistikler
-- **Makine Öğrenmesi**: Random Forest ile yarış tahmini
 - **CLI Arayüzü**: Komut satırından kolay kullanım
 
 ## Kurulum
@@ -53,13 +52,6 @@ seb jokey-stats --min-yaris 10
 
 # Mesafe bazlı istatistikler
 seb mesafe-stats
-```
-
-### Model Eğitimi ve Tahmin
-
-```bash
-# Model eğitimi
-seb train --data veriler.csv --output model.joblib
 
 # Verbose mod
 seb -v fetch --months 1
@@ -111,15 +103,9 @@ seb/
 ├── cli.py            # Komut satırı arayüzü
 ├── database.py       # SQLAlchemy ORM modelleri ve veritabanı yönetimi
 ├── tjk_scraper.py    # TJK web scraper
-├── models.py         # Veri modelleri
-├── data_loader.py    # CSV veri yükleme
-├── features.py       # Özellik mühendisliği
-├── predictor.py      # ML tahmin motoru
 tests/
 ├── test_database.py
-├── test_tjk_scraper.py
-├── test_models.py
-└── test_predictor.py
+└── test_tjk_scraper.py
 ```
 
 ## Lisans

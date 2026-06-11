@@ -9,7 +9,6 @@ from pathlib import Path
 import click
 
 from seb.database import DatabaseManager
-from seb.predictor import HorseRacingPredictor
 
 
 @click.group()
@@ -183,47 +182,3 @@ def mesafe_stats(ctx: click.Context) -> None:
     for r in results:
         click.echo(f"{r['metre']:<12} {r['kategori']:<12} {r['toplam_yaris']:<12}")
 
-
-# ── Tahmin Modeli ────────────────────────────────────────────────────────────
-
-
-@main.command()
-@click.option("--data", required=True, type=click.Path(exists=True), help="Yarış verisi CSV")
-@click.option("--output", default="model.joblib", help="Model kayıt yolu")
-@click.option("--estimators", default=100, help="Random Forest ağaç sayısı")
-@click.option("--max-depth", default=10, help="Maksimum ağaç derinliği")
-def train(data: str, output: str, estimators: int, max_depth: int) -> None:
-    """Tahmin modelini eğit."""
-    from seb.data_loader import load_race_data
-    from seb.features import build_feature_matrix
-
-    click.echo(f"Veri yükleniyor: {data}")
-
-    try:
-        races = load_race_data(data)
-    except (FileNotFoundError, ValueError) as e:
-        click.echo(f"Hata: {e}", err=True)
-        sys.exit(1)
-
-    click.echo(f"{len(races)} yarış yüklendi")
-
-    X, y = build_feature_matrix(races)
-    if X.empty:
-        click.echo("Hata: Özellik matrisi boş — yeterli veri yok", err=True)
-        sys.exit(1)
-
-    click.echo(f"Özellik matrisi: {X.shape[0]} örnek, {X.shape[1]} özellik")
-
-    predictor = HorseRacingPredictor(
-        n_estimators=estimators,
-        max_depth=max_depth,
-    )
-    predictor.fit(X, y)
-
-    predictor.save(output)
-    click.echo(f"Model kaydedildi: {output}")
-
-    importances = predictor.feature_importances()
-    click.echo("\nEn önemli 5 özellik:")
-    for i, (name, score) in enumerate(list(importances.items())[:5], 1):
-        click.echo(f"  {i}. {name}: {score:.4f}")
