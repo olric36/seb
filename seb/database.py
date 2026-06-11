@@ -147,12 +147,10 @@ class DatabaseManager:
         tarih: date,
         hipodrom_id: int,
         kosu_no: int,
-        kulvar: int | None = None,
         siklet: float | None = None,
         siralama: int | None = None,
         derece_sn: float | None = None,
         derece_str: str | None = None,
-        ganyan: float | None = None,
     ) -> YarisSonucu:
         """Yarış sonucu ekle (zaten varsa atla)."""
         existing = (
@@ -170,12 +168,10 @@ class DatabaseManager:
             tarih=tarih,
             hipodrom_id=hipodrom_id,
             kosu_no=kosu_no,
-            kulvar=kulvar,
             siklet=siklet,
             siralama=siralama,
             derece_sn=derece_sn,
             derece_str=derece_str,
-            ganyan=ganyan,
         )
         session.add(sonuc)
         session.flush()
@@ -258,12 +254,10 @@ class DatabaseManager:
                     tarih=yartar,
                     hipodrom_id=hipodrom.id,
                     kosu_no=int(row["kosu_no"]),
-                    kulvar=int(row["kulvar"]) if pd.notna(row.get("kulvar")) else None,
                     siklet=float(row["siklet"]) if pd.notna(row.get("siklet")) else None,
                     siralama=int(row["siralama"]) if pd.notna(row.get("siralama")) else None,
                     derece_sn=float(row["derece_sn"]) if pd.notna(row.get("derece_sn")) else None,
                     derece_str=str(row.get("derece_str", "")) or None,
-                    ganyan=float(row["ganyan"]) if pd.notna(row.get("ganyan")) else None,
                 )
 
             session.commit()
@@ -315,7 +309,6 @@ class DatabaseManager:
                     func.sum(
                         func.cast(YarisSonucu.siralama <= 3, Integer)
                     ).label("ilk_uc"),
-                    func.avg(YarisSonucu.ganyan).label("ort_ganyan"),
                 )
                 .join(At)
                 .group_by(At.id)
@@ -337,7 +330,6 @@ class DatabaseManager:
                     "birincilik": r.birincilik or 0,
                     "ilk_uc": r.ilk_uc or 0,
                     "kazanma_orani": round((r.birincilik or 0) / r.toplam_yaris, 3),
-                    "ort_ganyan": round(r.ort_ganyan, 2) if r.ort_ganyan else None,
                 }
                 for r in results
             ]

@@ -27,12 +27,14 @@ class YarisSonucu(Base):
     kosu_no = Column(Integer, nullable=False)
 
     # Yarış detayları
-    kulvar = Column(Integer, nullable=True)
     siklet = Column(Float, nullable=True)
     siralama = Column(Integer, nullable=True)
     derece_sn = Column(Float, nullable=True)
     derece_str = Column(String(20), nullable=True)
-    ganyan = Column(Float, nullable=True)
+    skos = Column(Float, nullable=True)
+    hesder = Column(Float, nullable=True)
+    reel = Column(Float, nullable=True)
+    uyder = Column(Float, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("yaris_id", "at_id", name="uq_sonuc_yaris_at"),

@@ -134,12 +134,10 @@ class TestDatabaseManager:
             tarih=date(2026, 6, 1),
             hipodrom_id=h.id,
             kosu_no=1,
-            kulvar=3,
             siklet=57.0,
             siralama=1,
             derece_sn=66.96,
             derece_str="1.06.96",
-            ganyan=6.70,
         )
         session.commit()
         assert s1.id is not None
@@ -171,12 +169,12 @@ class TestDatabaseManager:
                     "zemin": "çim",
                     "at_ismi": "MELONCITTO",
                     "irk": "İngiliz",
-                    "kulvar": 4,
+
                     "siklet": 57.0,
                     "jokey": "O.YILDIZ",
                     "derece_sn": 66.96,
                     "derece_str": "1.06.96",
-                    "ganyan": 6.70,
+
                     "siralama": 1,
                 },
                 {
@@ -189,12 +187,12 @@ class TestDatabaseManager:
                     "zemin": "çim",
                     "at_ismi": "I LOVE SPEED",
                     "irk": "İngiliz",
-                    "kulvar": 3,
+
                     "siklet": 57.0,
                     "jokey": "B.M.MIRIK",
                     "derece_sn": 66.97,
                     "derece_str": "1.06.97",
-                    "ganyan": 3.50,
+
                     "siralama": 2,
                 },
             ]
@@ -226,12 +224,12 @@ class TestDatabaseManager:
                     "zemin": "çim",
                     "at_ismi": "TEST AT",
                     "irk": "Arap",
-                    "kulvar": 1,
+
                     "siklet": 55.0,
                     "jokey": "TEST JOKEY",
                     "derece_sn": 70.0,
                     "derece_str": "1.10.00",
-                    "ganyan": 5.0,
+
                     "siralama": 1,
                 },
             ]
@@ -260,12 +258,12 @@ class TestDatabaseManager:
                     "zemin": "çim",
                     "at_ismi": "AT1",
                     "irk": "İngiliz",
-                    "kulvar": 1,
+
                     "siklet": 57.0,
                     "jokey": "JOKEY1",
                     "derece_sn": 72.0,
                     "derece_str": "1.12.00",
-                    "ganyan": 4.0,
+
                     "siralama": 1,
                 },
             ]
