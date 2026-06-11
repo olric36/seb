@@ -41,8 +41,8 @@ class Yaris(Base):
     pist_durumu = Column(String(50), nullable=True)
     opn = Column(Float, nullable=True)
     sapma = Column(Float, nullable=True)
-    win = Column(String(200), nullable=True)
-    lost = Column(String(200), nullable=True)
+    win = Column(Float, nullable=True)
+    lost = Column(Float, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("yartar", "il", "kosuno", name="uq_yaris_tarih_il_kosu"),

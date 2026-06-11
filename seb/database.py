@@ -83,16 +83,26 @@ class DatabaseManager:
             jokey.yarsay = (jokey.yarsay or 0) + 1
         return jokey
 
-    def get_or_create_mesafe(self, session: Session, metre: int) -> Mesafe:
+    def get_or_create_mesafe(
+        self,
+        session: Session,
+        mesafe: int,
+        il: str | None = None,
+        irk: str | None = None,
+        pist: str | None = None,
+    ) -> Mesafe:
         """Mesafeyi bul veya oluştur."""
-        from seb.mesafe import mesafe_kategorisi
-
-        mesafe_obj = session.query(Mesafe).filter_by(metre=metre).first()
+        mesafe_obj = (
+            session.query(Mesafe)
+            .filter_by(il=il, irk=irk, pist=pist, mesafe=mesafe)
+            .first()
+        )
         if mesafe_obj is None:
-            kategori = mesafe_kategorisi(metre)
-            mesafe_obj = Mesafe(metre=metre, kategori=kategori)
+            mesafe_obj = Mesafe(il=il, irk=irk, pist=pist, mesafe=mesafe, yarsay=1)
             session.add(mesafe_obj)
             session.flush()
+        else:
+            mesafe_obj.yarsay = (mesafe_obj.yarsay or 0) + 1
         return mesafe_obj
 
     def get_or_create_yaris(
@@ -207,24 +217,32 @@ class DatabaseManager:
                 # Jokey
                 jokey = self.get_or_create_jokey(session, ad=str(row["jokey"]))
 
-                # Mesafe (ayrı tablo)
-                mesafe_val = None
-                if pd.notna(row.get("mesafe")) and int(row["mesafe"]) > 0:
-                    mesafe_val = int(row["mesafe"])
-                    self.get_or_create_mesafe(session, metre=mesafe_val)
-
-                # Yarış
+                # Ortak alanlar
                 yartar = (
                     row["tarih"]
                     if isinstance(row["tarih"], date)
                     else datetime.fromisoformat(str(row["tarih"])).date()
                 )
                 il_str = str(row["hipodrom"]) if pd.notna(row.get("hipodrom")) else None
+                pist_str = str(row.get("zemin", "")) or None
+
+                # Mesafe (ayrı tablo)
+                mesafe_val = None
+                if pd.notna(row.get("mesafe")) and int(row["mesafe"]) > 0:
+                    mesafe_val = int(row["mesafe"])
+                    self.get_or_create_mesafe(
+                        session,
+                        mesafe=mesafe_val,
+                        il=il_str,
+                        irk=irk,
+                        pist=pist_str,
+                    )
+                # Yarış
                 yaris = self.get_or_create_yaris(
                     session,
                     yartar=yartar,
                     il=il_str,
-                    pist=str(row.get("zemin", "")) or None,
+                    pist=pist_str,
                     kosuno=int(row["kosu_no"]),
                     irk=irk,
                     mesafe=mesafe_val,
@@ -371,21 +389,21 @@ class DatabaseManager:
         session = self.get_session()
         try:
             results = (
-                session.query(
-                    Mesafe.metre,
-                    Mesafe.kategori,
-                    func.count(Yaris.id).label("toplam_yaris"),
-                )
-                .join(Yaris, Yaris.mesafe == Mesafe.metre)
-                .group_by(Mesafe.id)
-                .order_by(Mesafe.metre)
+                session.query(Mesafe)
+                .order_by(Mesafe.mesafe)
                 .all()
             )
             return [
                 {
-                    "metre": r.metre,
-                    "kategori": r.kategori,
-                    "toplam_yaris": r.toplam_yaris,
+                    "il": r.il,
+                    "irk": r.irk,
+                    "pist": r.pist,
+                    "mesafe": r.mesafe,
+                    "yarsay": r.yarsay,
+                    "ortder": r.ortder,
+                    "s100": r.s100,
+                    "win": r.win,
+                    "lost": r.lost,
                 }
                 for r in results
             ]

@@ -2,25 +2,9 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Float, Integer, String, UniqueConstraint
 
 from seb.base import Base
-
-# Mesafe kategorileri
-MESAFE_KATEGORILERI = {
-    "sprint": (0, 1300),
-    "kısa": (1300, 1600),
-    "orta": (1600, 2000),
-    "uzun": (2000, 9999),
-}
-
-
-def mesafe_kategorisi(metre: int) -> str:
-    """Mesafeye göre kategori belirle."""
-    for kategori, (alt, ust) in MESAFE_KATEGORILERI.items():
-        if alt <= metre < ust:
-            return kategori
-    return "bilinmiyor"
 
 
 class Mesafe(Base):
@@ -29,8 +13,21 @@ class Mesafe(Base):
     __tablename__ = "mesafeler"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    metre = Column(Integer, unique=True, nullable=False)
-    kategori = Column(String(50), nullable=False)  # sprint / kısa / orta / uzun
+    il = Column(String(100), nullable=True)
+    irk = Column(String(50), nullable=True)  # İngiliz / Arap
+    pist = Column(String(100), nullable=True)
+    mesafe = Column(Integer, nullable=False)
+    yarsay = Column(Integer, default=0)
+    ortder = Column(Float, nullable=True)
+    s100 = Column(Float, nullable=True)
+    nmesafe = Column(Float, nullable=True)
+    vc = Column(Float, nullable=True)
+    win = Column(Float, nullable=True)
+    lost = Column(Float, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("il", "irk", "pist", "mesafe", name="uq_mesafe_il_irk_pist_mesafe"),
+    )
 
     def __repr__(self) -> str:
-        return f"<Mesafe(id={self.id}, metre={self.metre}, kategori='{self.kategori}')>"
+        return f"<Mesafe(id={self.id}, il='{self.il}', mesafe={self.mesafe})>"

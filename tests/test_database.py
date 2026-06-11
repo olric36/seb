@@ -8,7 +8,6 @@ import pandas as pd
 import pytest
 
 from seb.database import DatabaseManager
-from seb.mesafe import mesafe_kategorisi
 
 
 @pytest.fixture
@@ -18,25 +17,6 @@ def db(tmp_path):
     manager = DatabaseManager(db_path)
     manager.create_tables()
     return manager
-
-
-class TestMesafeKategorisi:
-    def test_sprint(self):
-        assert mesafe_kategorisi(1000) == "sprint"
-        assert mesafe_kategorisi(1200) == "sprint"
-
-    def test_kisa(self):
-        assert mesafe_kategorisi(1400) == "kısa"
-        assert mesafe_kategorisi(1500) == "kısa"
-
-    def test_orta(self):
-        assert mesafe_kategorisi(1600) == "orta"
-        assert mesafe_kategorisi(1800) == "orta"
-
-    def test_uzun(self):
-        assert mesafe_kategorisi(2000) == "uzun"
-        assert mesafe_kategorisi(2400) == "uzun"
-        assert mesafe_kategorisi(3000) == "uzun"
 
 
 class TestDatabaseManager:
@@ -97,18 +77,20 @@ class TestDatabaseManager:
 
     def test_get_or_create_mesafe(self, db):
         session = db.get_session()
-        m1 = db.get_or_create_mesafe(session, metre=1200)
+        m1 = db.get_or_create_mesafe(session, mesafe=1200, il="İstanbul", irk="İngiliz", pist="çim")
         session.commit()
         assert m1.id is not None
-        assert m1.metre == 1200
-        assert m1.kategori == "sprint"
+        assert m1.mesafe == 1200
+        assert m1.yarsay == 1
 
-        m2 = db.get_or_create_mesafe(session, metre=1200)
+        # Aynı kombinasyonla tekrar — yarsay artar
+        m2 = db.get_or_create_mesafe(session, mesafe=1200, il="İstanbul", irk="İngiliz", pist="çim")
         assert m2.id == m1.id
+        assert m2.yarsay == 2
 
-        m3 = db.get_or_create_mesafe(session, metre=2400)
+        # Farklı mesafe ayrı kayıt
+        m3 = db.get_or_create_mesafe(session, mesafe=2400, il="İstanbul", irk="İngiliz", pist="çim")
         session.commit()
-        assert m3.kategori == "uzun"
         assert m3.id != m1.id
         session.close()
 
@@ -291,5 +273,6 @@ class TestDatabaseManager:
         db.import_from_dataframe(df)
         results = db.query_mesafe_istatistikleri()
         assert len(results) == 1
-        assert results[0]["metre"] == 1200
-        assert results[0]["kategori"] == "sprint"
+        assert results[0]["mesafe"] == 1200
+        assert results[0]["il"] == "Bursa"
+        assert results[0]["yarsay"] == 1
