@@ -7,10 +7,8 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from seb.database import (
-    DatabaseManager,
-    mesafe_kategorisi,
-)
+from seb.database import DatabaseManager
+from seb.mesafe import mesafe_kategorisi
 
 
 @pytest.fixture
@@ -116,22 +114,22 @@ class TestDatabaseManager:
 
     def test_get_or_create_yaris(self, db):
         session = db.get_session()
-        h = db.get_or_create_hipodrom(session, tjk_id=3, isim="Veliefendi", sehir="İstanbul")
-        session.commit()
 
         y1 = db.get_or_create_yaris(
             session,
-            tarih=date(2026, 6, 1),
-            hipodrom_id=h.id,
-            kosu_no=1,
-            kosu_tipi="maiden",
-            zemin="çim",
+            yartar=date(2026, 6, 1),
+            il="İstanbul",
+            pist="çim",
+            kosuno=1,
+            irk="İngiliz",
+            mesafe=1200,
+            pist_durumu="maiden",
         )
         session.commit()
         assert y1.id is not None
 
         y2 = db.get_or_create_yaris(
-            session, tarih=date(2026, 6, 1), hipodrom_id=h.id, kosu_no=1
+            session, yartar=date(2026, 6, 1), il="İstanbul", kosuno=1
         )
         assert y2.id == y1.id
         session.close()
@@ -142,7 +140,7 @@ class TestDatabaseManager:
         at = db.get_or_create_at(session, ad="STORM", irk="İngiliz")
         jokey = db.get_or_create_jokey(session, ad="B.MIRIK")
         y = db.get_or_create_yaris(
-            session, tarih=date(2026, 6, 1), hipodrom_id=h.id, kosu_no=1
+            session, yartar=date(2026, 6, 1), il="İstanbul", kosuno=1
         )
         session.commit()
 

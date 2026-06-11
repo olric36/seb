@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Column, Date, Float, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from seb.base import Base
@@ -18,7 +18,6 @@ class Hipodrom(Base):
     isim = Column(String(100), nullable=False)
     sehir = Column(String(100), nullable=False)
 
-    yarislar = relationship("Yaris", back_populates="hipodrom")
     sonuclar = relationship("YarisSonucu", back_populates="hipodrom")
 
     def __repr__(self) -> str:
@@ -31,23 +30,28 @@ class Yaris(Base):
     __tablename__ = "yarislar"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    tarih = Column(Date, nullable=False)
-    hipodrom_id = Column(Integer, ForeignKey("hipodromlar.id"), nullable=False)
-    mesafe_id = Column(Integer, ForeignKey("mesafeler.id"), nullable=True)
-    kosu_no = Column(Integer, nullable=False)
-    kosu_tipi = Column(String(50), nullable=True)
-    zemin = Column(String(50), nullable=True)
+    yartar = Column(Date, nullable=False)
+    il = Column(String(100), nullable=True)
+    pist = Column(String(100), nullable=True)
+    kosuno = Column(Integer, nullable=False)
+    irk = Column(String(50), nullable=True)  # İngiliz / Arap
+    mesafe = Column(Integer, nullable=True)
+    ortder = Column(Float, nullable=True)
+    atsay = Column(Integer, nullable=True)
+    pist_durumu = Column(String(50), nullable=True)
+    opn = Column(Float, nullable=True)
+    sapma = Column(Float, nullable=True)
+    win = Column(String(200), nullable=True)
+    lost = Column(String(200), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("tarih", "hipodrom_id", "kosu_no", name="uq_yaris_tarih_hipodrom_kosu"),
+        UniqueConstraint("yartar", "il", "kosuno", name="uq_yaris_tarih_il_kosu"),
     )
 
-    hipodrom = relationship("Hipodrom", back_populates="yarislar")
-    mesafe = relationship("Mesafe", back_populates="yarislar")
     sonuclar = relationship("YarisSonucu", back_populates="yaris")
 
     def __repr__(self) -> str:
         return (
-            f"<Yaris(id={self.id}, tarih={self.tarih}, "
-            f"hipodrom_id={self.hipodrom_id}, kosu_no={self.kosu_no})>"
+            f"<Yaris(id={self.id}, yartar={self.yartar}, "
+            f"il='{self.il}', kosuno={self.kosuno})>"
         )

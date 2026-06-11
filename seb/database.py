@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from seb.at import At
 from seb.base import Base
 from seb.jokey import Jokey
-from seb.mesafe import Mesafe, mesafe_kategorisi
+from seb.mesafe import Mesafe
 from seb.race import Hipodrom, Yaris
 from seb.result import YarisSonucu
 
@@ -85,6 +85,8 @@ class DatabaseManager:
 
     def get_or_create_mesafe(self, session: Session, metre: int) -> Mesafe:
         """Mesafeyi bul veya oluştur."""
+        from seb.mesafe import mesafe_kategorisi
+
         mesafe_obj = session.query(Mesafe).filter_by(metre=metre).first()
         if mesafe_obj is None:
             kategori = mesafe_kategorisi(metre)
@@ -96,27 +98,31 @@ class DatabaseManager:
     def get_or_create_yaris(
         self,
         session: Session,
-        tarih: date,
-        hipodrom_id: int,
-        kosu_no: int,
-        mesafe_id: int | None = None,
-        kosu_tipi: str | None = None,
-        zemin: str | None = None,
+        yartar: date,
+        il: str | None = None,
+        pist: str | None = None,
+        kosuno: int = 1,
+        irk: str | None = None,
+        mesafe: int | None = None,
+        atsay: int | None = None,
+        pist_durumu: str | None = None,
     ) -> Yaris:
         """Yarışı bul veya oluştur."""
         yaris = (
             session.query(Yaris)
-            .filter_by(tarih=tarih, hipodrom_id=hipodrom_id, kosu_no=kosu_no)
+            .filter_by(yartar=yartar, il=il, kosuno=kosuno)
             .first()
         )
         if yaris is None:
             yaris = Yaris(
-                tarih=tarih,
-                hipodrom_id=hipodrom_id,
-                kosu_no=kosu_no,
-                mesafe_id=mesafe_id,
-                kosu_tipi=kosu_tipi,
-                zemin=zemin,
+                yartar=yartar,
+                il=il,
+                pist=pist,
+                kosuno=kosuno,
+                irk=irk,
+                mesafe=mesafe,
+                atsay=atsay,
+                pist_durumu=pist_durumu,
             )
             session.add(yaris)
             session.flush()
@@ -201,26 +207,28 @@ class DatabaseManager:
                 # Jokey
                 jokey = self.get_or_create_jokey(session, ad=str(row["jokey"]))
 
-                # Mesafe
-                mesafe_id = None
+                # Mesafe (ayrı tablo)
+                mesafe_val = None
                 if pd.notna(row.get("mesafe")) and int(row["mesafe"]) > 0:
-                    mesafe_obj = self.get_or_create_mesafe(session, metre=int(row["mesafe"]))
-                    mesafe_id = mesafe_obj.id
+                    mesafe_val = int(row["mesafe"])
+                    self.get_or_create_mesafe(session, metre=mesafe_val)
 
                 # Yarış
-                tarih = (
+                yartar = (
                     row["tarih"]
                     if isinstance(row["tarih"], date)
                     else datetime.fromisoformat(str(row["tarih"])).date()
                 )
+                il_str = str(row["hipodrom"]) if pd.notna(row.get("hipodrom")) else None
                 yaris = self.get_or_create_yaris(
                     session,
-                    tarih=tarih,
-                    hipodrom_id=hipodrom.id,
-                    kosu_no=int(row["kosu_no"]),
-                    mesafe_id=mesafe_id,
-                    kosu_tipi=str(row.get("kosu_tipi", "")) or None,
-                    zemin=str(row.get("zemin", "")) or None,
+                    yartar=yartar,
+                    il=il_str,
+                    pist=str(row.get("zemin", "")) or None,
+                    kosuno=int(row["kosu_no"]),
+                    irk=irk,
+                    mesafe=mesafe_val,
+                    pist_durumu=str(row.get("kosu_tipi", "")) or None,
                 )
 
                 # Sonuç (denormalize alanlar dahil)
@@ -229,7 +237,7 @@ class DatabaseManager:
                     yaris_id=yaris.id,
                     at_id=at.id,
                     jokey_id=jokey.id,
-                    tarih=tarih,
+                    tarih=yartar,
                     hipodrom_id=hipodrom.id,
                     kosu_no=int(row["kosu_no"]),
                     kulvar=int(row["kulvar"]) if pd.notna(row.get("kulvar")) else None,
@@ -368,7 +376,7 @@ class DatabaseManager:
                     Mesafe.kategori,
                     func.count(Yaris.id).label("toplam_yaris"),
                 )
-                .join(Yaris, Yaris.mesafe_id == Mesafe.id)
+                .join(Yaris, Yaris.mesafe == Mesafe.metre)
                 .group_by(Mesafe.id)
                 .order_by(Mesafe.metre)
                 .all()
