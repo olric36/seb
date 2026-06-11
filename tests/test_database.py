@@ -66,31 +66,35 @@ class TestDatabaseManager:
 
     def test_get_or_create_at(self, db):
         session = db.get_session()
-        at1 = db.get_or_create_at(session, isim="BOLD PILOT", irk="İngiliz")
+        at1 = db.get_or_create_at(session, ad="BOLD PILOT", irk="İngiliz")
         session.commit()
         assert at1.id is not None
-        assert at1.isim == "BOLD PILOT"
+        assert at1.ad == "BOLD PILOT"
         assert at1.irk == "İngiliz"
+        assert at1.yaris_sayisi == 1
 
-        # Aynı isim+ırk ile tekrar
-        at2 = db.get_or_create_at(session, isim="BOLD PILOT", irk="İngiliz")
+        # Aynı ad+ırk ile tekrar — yaris_sayisi artar
+        at2 = db.get_or_create_at(session, ad="BOLD PILOT", irk="İngiliz")
         assert at2.id == at1.id
+        assert at2.yaris_sayisi == 2
 
         # Farklı ırk ile ayrı kayıt
-        at3 = db.get_or_create_at(session, isim="BOLD PILOT", irk="Arap")
+        at3 = db.get_or_create_at(session, ad="BOLD PILOT", irk="Arap")
         session.commit()
         assert at3.id != at1.id
         session.close()
 
     def test_get_or_create_jokey(self, db):
         session = db.get_session()
-        j1 = db.get_or_create_jokey(session, isim="A.ÇELIK")
+        j1 = db.get_or_create_jokey(session, ad="A.ÇELIK")
         session.commit()
         assert j1.id is not None
-        assert j1.isim == "A.ÇELIK"
+        assert j1.ad == "A.ÇELIK"
+        assert j1.yarsay == 1
 
-        j2 = db.get_or_create_jokey(session, isim="A.ÇELIK")
+        j2 = db.get_or_create_jokey(session, ad="A.ÇELIK")
         assert j2.id == j1.id
+        assert j2.yarsay == 2
         session.close()
 
     def test_get_or_create_mesafe(self, db):
@@ -135,8 +139,8 @@ class TestDatabaseManager:
     def test_add_yaris_sonucu(self, db):
         session = db.get_session()
         h = db.get_or_create_hipodrom(session, tjk_id=3, isim="Veliefendi", sehir="İstanbul")
-        at = db.get_or_create_at(session, isim="STORM", irk="İngiliz")
-        jokey = db.get_or_create_jokey(session, isim="B.MIRIK")
+        at = db.get_or_create_at(session, ad="STORM", irk="İngiliz")
+        jokey = db.get_or_create_jokey(session, ad="B.MIRIK")
         y = db.get_or_create_yaris(
             session, tarih=date(2026, 6, 1), hipodrom_id=h.id, kosu_no=1
         )

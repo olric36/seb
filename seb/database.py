@@ -1,12 +1,11 @@
-"""SQLite veritabanı modelleri ve yönetimi.
+"""Veritabanı yönetimi (DatabaseManager).
 
-Tablolar:
-    - hipodromlar: Türkiye hipodromları
-    - atlar: At kayıtları (isim + ırk)
-    - jokeyler: Jokey kayıtları
-    - mesafeler: Yarış mesafeleri ve kategorileri
-    - yarislar: Yarış detayları
-    - yaris_sonuclari: Her yarıştaki at-jokey sonuçları (denormalize alanlar dahil)
+Tablo modelleri ayrı dosyalarda:
+    - at.py: At (atlar)
+    - jokey.py: Jokey (jokeyler)
+    - mesafe.py: Mesafe (mesafeler)
+    - race.py: Hipodrom (hipodromlar) + Yaris (yarislar)
+    - result.py: YarisSonucu (yaris_sonuclari)
 """
 
 from __future__ import annotations
@@ -15,176 +14,20 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sqlalchemy import (
-    Column,
-    Date,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    UniqueConstraint,
-    create_engine,
-    func,
-)
-from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
+from sqlalchemy import Integer, create_engine, func
+from sqlalchemy.orm import Session, sessionmaker
+
+from seb.at import At
+from seb.base import Base
+from seb.jokey import Jokey
+from seb.mesafe import Mesafe, mesafe_kategorisi
+from seb.race import Hipodrom, Yaris
+from seb.result import YarisSonucu
 
 if TYPE_CHECKING:
     from pandas import DataFrame
 
 DEFAULT_DB_PATH = "seb_yarislar.db"
-
-# Mesafe kategorileri
-MESAFE_KATEGORILERI = {
-    "sprint": (0, 1300),
-    "kısa": (1300, 1600),
-    "orta": (1600, 2000),
-    "uzun": (2000, 9999),
-}
-
-
-def mesafe_kategorisi(metre: int) -> str:
-    """Mesafeye göre kategori belirle."""
-    for kategori, (alt, ust) in MESAFE_KATEGORILERI.items():
-        if alt <= metre < ust:
-            return kategori
-    return "bilinmiyor"
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class Hipodrom(Base):
-    """Hipodrom (yarış pisti) tablosu."""
-
-    __tablename__ = "hipodromlar"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    tjk_id = Column(Integer, unique=True, nullable=False)
-    isim = Column(String(100), nullable=False)
-    sehir = Column(String(100), nullable=False)
-
-    yarislar = relationship("Yaris", back_populates="hipodrom")
-    sonuclar = relationship("YarisSonucu", back_populates="hipodrom")
-
-    def __repr__(self) -> str:
-        return f"<Hipodrom(id={self.id}, isim='{self.isim}', sehir='{self.sehir}')>"
-
-
-class At(Base):
-    """At tablosu."""
-
-    __tablename__ = "atlar"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    isim = Column(String(200), nullable=False)
-    irk = Column(String(50), nullable=True)  # "İngiliz" veya "Arap"
-
-    __table_args__ = (UniqueConstraint("isim", "irk", name="uq_at_isim_irk"),)
-
-    sonuclar = relationship("YarisSonucu", back_populates="at")
-
-    def __repr__(self) -> str:
-        return f"<At(id={self.id}, isim='{self.isim}', irk='{self.irk}')>"
-
-
-class Jokey(Base):
-    """Jokey tablosu."""
-
-    __tablename__ = "jokeyler"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    isim = Column(String(200), unique=True, nullable=False)
-
-    sonuclar = relationship("YarisSonucu", back_populates="jokey")
-
-    def __repr__(self) -> str:
-        return f"<Jokey(id={self.id}, isim='{self.isim}')>"
-
-
-class Mesafe(Base):
-    """Mesafe tablosu."""
-
-    __tablename__ = "mesafeler"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    metre = Column(Integer, unique=True, nullable=False)
-    kategori = Column(String(50), nullable=False)  # sprint / kısa / orta / uzun
-
-    yarislar = relationship("Yaris", back_populates="mesafe")
-
-    def __repr__(self) -> str:
-        return f"<Mesafe(id={self.id}, metre={self.metre}, kategori='{self.kategori}')>"
-
-
-class Yaris(Base):
-    """Yarış tablosu."""
-
-    __tablename__ = "yarislar"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    tarih = Column(Date, nullable=False)
-    hipodrom_id = Column(Integer, ForeignKey("hipodromlar.id"), nullable=False)
-    mesafe_id = Column(Integer, ForeignKey("mesafeler.id"), nullable=True)
-    kosu_no = Column(Integer, nullable=False)
-    kosu_tipi = Column(String(50), nullable=True)
-    zemin = Column(String(50), nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint("tarih", "hipodrom_id", "kosu_no", name="uq_yaris_tarih_hipodrom_kosu"),
-    )
-
-    hipodrom = relationship("Hipodrom", back_populates="yarislar")
-    mesafe = relationship("Mesafe", back_populates="yarislar")
-    sonuclar = relationship("YarisSonucu", back_populates="yaris")
-
-    def __repr__(self) -> str:
-        return (
-            f"<Yaris(id={self.id}, tarih={self.tarih}, "
-            f"hipodrom_id={self.hipodrom_id}, kosu_no={self.kosu_no})>"
-        )
-
-
-class YarisSonucu(Base):
-    """Yarış sonucu tablosu — her yarıştaki at-jokey girişi.
-
-    Denormalize alanlar (tarih, hipodrom_id, kosu_no) sorgu kolaylığı için eklendi.
-    """
-
-    __tablename__ = "yaris_sonuclari"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    yaris_id = Column(Integer, ForeignKey("yarislar.id"), nullable=False)
-    at_id = Column(Integer, ForeignKey("atlar.id"), nullable=False)
-    jokey_id = Column(Integer, ForeignKey("jokeyler.id"), nullable=False)
-
-    # Denormalize alanlar
-    tarih = Column(Date, nullable=False)
-    hipodrom_id = Column(Integer, ForeignKey("hipodromlar.id"), nullable=False)
-    kosu_no = Column(Integer, nullable=False)
-
-    # Yarış detayları
-    kulvar = Column(Integer, nullable=True)
-    siklet = Column(Float, nullable=True)
-    siralama = Column(Integer, nullable=True)
-    derece_sn = Column(Float, nullable=True)
-    derece_str = Column(String(20), nullable=True)
-    ganyan = Column(Float, nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint("yaris_id", "at_id", name="uq_sonuc_yaris_at"),
-    )
-
-    yaris = relationship("Yaris", back_populates="sonuclar")
-    at = relationship("At", back_populates="sonuclar")
-    jokey = relationship("Jokey", back_populates="sonuclar")
-    hipodrom = relationship("Hipodrom", back_populates="sonuclar")
-
-    def __repr__(self) -> str:
-        return (
-            f"<YarisSonucu(yaris_id={self.yaris_id}, at_id={self.at_id}, "
-            f"siralama={self.siralama})>"
-        )
 
 
 class DatabaseManager:
@@ -218,22 +61,26 @@ class DatabaseManager:
             session.flush()
         return hipodrom
 
-    def get_or_create_at(self, session: Session, isim: str, irk: str | None = None) -> At:
+    def get_or_create_at(self, session: Session, ad: str, irk: str | None = None) -> At:
         """Atı bul veya oluştur."""
-        at = session.query(At).filter_by(isim=isim, irk=irk).first()
+        at = session.query(At).filter_by(ad=ad, irk=irk).first()
         if at is None:
-            at = At(isim=isim, irk=irk)
+            at = At(ad=ad, irk=irk, yaris_sayisi=1)
             session.add(at)
             session.flush()
+        else:
+            at.yaris_sayisi = (at.yaris_sayisi or 0) + 1
         return at
 
-    def get_or_create_jokey(self, session: Session, isim: str) -> Jokey:
+    def get_or_create_jokey(self, session: Session, ad: str) -> Jokey:
         """Jokeyi bul veya oluştur."""
-        jokey = session.query(Jokey).filter_by(isim=isim).first()
+        jokey = session.query(Jokey).filter_by(ad=ad).first()
         if jokey is None:
-            jokey = Jokey(isim=isim)
+            jokey = Jokey(ad=ad, yarsay=1)
             session.add(jokey)
             session.flush()
+        else:
+            jokey.yarsay = (jokey.yarsay or 0) + 1
         return jokey
 
     def get_or_create_mesafe(self, session: Session, metre: int) -> Mesafe:
@@ -347,12 +194,12 @@ class DatabaseManager:
                 irk = str(row.get("irk", "")) or None
                 at = self.get_or_create_at(
                     session,
-                    isim=str(row["at_ismi"]),
+                    ad=str(row["at_ismi"]),
                     irk=irk,
                 )
 
                 # Jokey
-                jokey = self.get_or_create_jokey(session, isim=str(row["jokey"]))
+                jokey = self.get_or_create_jokey(session, ad=str(row["jokey"]))
 
                 # Mesafe
                 mesafe_id = None
@@ -433,7 +280,7 @@ class DatabaseManager:
         try:
             results = (
                 session.query(
-                    At.isim,
+                    At.ad,
                     At.irk,
                     func.count(YarisSonucu.id).label("toplam_yaris"),
                     func.sum(
@@ -458,7 +305,7 @@ class DatabaseManager:
             )
             return [
                 {
-                    "at": r.isim,
+                    "at": r.ad,
                     "irk": r.irk,
                     "toplam_yaris": r.toplam_yaris,
                     "birincilik": r.birincilik or 0,
@@ -477,7 +324,7 @@ class DatabaseManager:
         try:
             results = (
                 session.query(
-                    Jokey.isim,
+                    Jokey.ad,
                     func.count(YarisSonucu.id).label("toplam_yaris"),
                     func.sum(
                         func.cast(YarisSonucu.siralama == 1, Integer)
@@ -500,7 +347,7 @@ class DatabaseManager:
             )
             return [
                 {
-                    "jokey": r.isim,
+                    "jokey": r.ad,
                     "toplam_yaris": r.toplam_yaris,
                     "birincilik": r.birincilik or 0,
                     "ilk_uc": r.ilk_uc or 0,
